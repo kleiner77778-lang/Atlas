@@ -62,18 +62,14 @@ jobs:
           sdkmanager --sdk_root=$SDK_DIR "platform-tools" "platforms;android-33" "build-tools;33.0.1" || true
 
       - name: Build with Buildozer
-        id: build_step
-        continue-on-error: true
         run: |
           export JAVA_HOME=$JAVA_HOME_17_X64
+          # Globale Android-Variablen löschen, damit Buildozer nicht verwirrt wird
+          unset ANDROID_HOME
+          unset ANDROID_SDK_ROOT
+          unset ANDROID_NDK_HOME
+          unset ANDROID_NDK_ROOT
           buildozer -v android debug
-
-      - name: Print full build log on failure
-        if: steps.build_step.outcome == 'failure'
-        run: |
-          echo "=== BUILD FAILED. SEARCHING FOR ERRORS IN LOG ==="
-          find ~/.buildozer -name "*.log" -exec cat {} + || true
-          exit 1
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
