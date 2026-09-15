@@ -29,27 +29,34 @@ jobs:
             libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
             libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev \
             zlib1g-dev libunwind-dev autoconf libtool pkg-config \
-            libncurses5-dev libffi-dev libssl-dev
+            libncurses5-dev libffi-dev libssl-dev unzip
 
       - name: Install Buildozer and Cython
         run: |
           pip install --upgrade pip
           pip install cython==0.29.36 buildozer
 
-      - name: Pre-download Android Command-Line Tools for Buildozer
+      - name: Correct Android SDK & cmdline-tools paths for Buildozer
         run: |
-          mkdir -p /home/runner/.buildozer/android/platform/android-sdk/cmdline-tools
-          cd /home/runner/.buildozer/android/platform/android-sdk/cmdline-tools
-          curl -o commandlinetools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-          unzip commandlinetools.zip
-          mkdir -p latest
-          mv cmdline-tools/* latest/ || true
-
-          # Lizenzen vorab erstellen
-          mkdir -p /home/runner/.buildozer/android/platform/android-sdk/licenses
-          echo "8933bac16c9d2af29705f148f4np912a5120a112" > /home/runner/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
-          echo "d56f5187479451eabf01fb78af6dfcb131e6489e" >> /home/runner/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
-          echo "24333f8a43b682427c875a6980b8dadb9f5b5f88" >> /home/runner/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
+          SDK_DIR="/home/runner/.buildozer/android/platform/android-sdk"
+          mkdir -p $SDK_DIR/cmdline-tools/latest
+          
+          # Download command line tools directly
+          curl -o /tmp/tools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+          unzip -q /tmp/tools.zip -d /tmp/cmd-tools
+          
+          # Move contents into cmdline-tools/latest
+          mv /tmp/cmd-tools/cmdline-tools/* $SDK_DIR/cmdline-tools/latest/
+          
+          # Create symbolic link so Buildozer finds tools/bin/sdkmanager
+          mkdir -p $SDK_DIR/tools
+          ln -s $SDK_DIR/cmdline-tools/latest/bin $SDK_DIR/tools/bin
+          
+          # Accept licenses pre-emptively
+          mkdir -p $SDK_DIR/licenses
+          echo "8933bac16c9d2af29705f148f4np912a5120a112" > $SDK_DIR/licenses/android-sdk-license
+          echo "d56f5187479451eabf01fb78af6dfcb131e6489e" >> $SDK_DIR/licenses/android-sdk-license
+          echo "24333f8a43b682427c875a6980b8dadb9f5b5f88" >> $SDK_DIR/licenses/android-sdk-license
 
       - name: Build with Buildozer
         run: |
