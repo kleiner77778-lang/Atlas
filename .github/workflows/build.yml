@@ -31,6 +31,10 @@ jobs:
           pip install cython==0.29.36 buildozer
 
       - name: Build with Buildozer
+        env:
+          ANDROID_BUILD_TOOLS_VERSION: "34.0.0"
+          ANDROID_API: "34"
+          ANDROID_MINAPI: "21"
         run: |
           buildozer -v android debug
 
