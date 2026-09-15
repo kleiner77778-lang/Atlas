@@ -61,10 +61,19 @@ jobs:
           yes | sdkmanager --sdk_root=$SDK_DIR --licenses || true
           sdkmanager --sdk_root=$SDK_DIR "platform-tools" "platforms;android-33" "build-tools;33.0.1" || true
 
-      - name: Build with Buildozer (Verbose log_level 2)
+      - name: Build with Buildozer
+        id: build_step
+        continue-on-error: true
         run: |
           export JAVA_HOME=$JAVA_HOME_17_X64
-          buildozer -v --debug android debug
+          buildozer -v android debug
+
+      - name: Print full build log on failure
+        if: steps.build_step.outcome == 'failure'
+        run: |
+          echo "=== BUILD FAILED. SEARCHING FOR ERRORS IN LOG ==="
+          find ~/.buildozer -name "*.log" -exec cat {} + || true
+          exit 1
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
