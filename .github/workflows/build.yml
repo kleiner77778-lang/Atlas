@@ -30,11 +30,14 @@ jobs:
           pip install --upgrade pip
           pip install cython==0.29.36 buildozer
 
+      - name: Patch buildozer.spec for API 34
+        run: |
+          sed -i 's/#\?android.api =.*/android.api = 34/g' buildozer.spec
+          sed -i 's/#\?android.min_api =.*/android.min_api = 21/g' buildozer.spec
+          sed -i 's/#\?android.build_tools_version =.*/android.build_tools_version = 34.0.0/g' buildozer.spec
+
       - name: Build with Buildozer
         run: |
-          export ANDROID_BUILD_TOOLS_VERSION="34.0.0"
-          export ANDROID_API="34"
-          export ANDROID_MINAPI="21"
           buildozer -v android debug
 
       - name: Upload APK Artifact
