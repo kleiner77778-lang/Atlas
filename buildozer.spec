@@ -1,5 +1,4 @@
 [app]
-
 title = Atlas E-Lkw Tracker
 package.name = elkwtracker
 package.domain = org.elkw
@@ -15,5 +14,5 @@ android.minapi = 21
 android.archs = arm64-v8a
 
 [buildozer]
-log_level = 2
+log_level = 1
 warn_on_root = 1
