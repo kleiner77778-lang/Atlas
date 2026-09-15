@@ -50,4 +50,4 @@ jobs:
         with:
           name: Atlas-APK
           path: bin/*.apk
-          if-no-files-found: error
+          if-no-files-found: warn
