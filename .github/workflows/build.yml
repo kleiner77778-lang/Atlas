@@ -30,16 +30,29 @@ jobs:
           pip install --upgrade pip
           pip install cython==0.29.36 buildozer
 
-      - name: Fix Buildozer spec
+      - name: Force correct SDK versions in buildozer.spec
         run: |
-          if [ -f buildozer.spec ]; then
-            sed -i 's/#android.api =.*/android.api = 33/' buildozer.spec
-            sed -i 's/android.api =.*/android.api = 33/' buildozer.spec
-            sed -i 's/#android.minapi =.*/android.minapi = 21/' buildozer.spec
-            sed -i 's/android.minapi =.*/android.minapi = 21/' buildozer.spec
-            sed -i 's/#android.build_tools_version =.*/android.build_tools_version = 33.0.1/' buildozer.spec
-            sed -i 's/android.build_tools_version =.*/android.build_tools_version = 33.0.1/' buildozer.spec
-          fi
+          python3 -c "
+          with open('buildozer.spec', 'r') as f:
+              content = f.read()
+          
+          # Replace or append api and build tools
+          import re
+          def set_config(key, value, text):
+              pattern = r'#?\s*' + key + r'(\s*=\s*.*)?$'
+              if re.search(pattern, text, re.MULTILINE):
+                  return re.sub(pattern, f'{key} = {value}', text, flags=re.MULTILINE)
+              else:
+                  return text + f'\n{key} = {value}\n'
+
+          content = set_config('android.api', '33', content)
+          content = set_config('android.minapi', '21', content)
+          content = set_config('android.build_tools_version', '33.0.1', content)
+
+          with open('buildozer.spec', 'w') as f:
+              f.write(content)
+          print('buildozer.spec successfully updated!')
+          "
 
       - name: Build with Buildozer
         run: |
