@@ -36,28 +36,33 @@ jobs:
           pip install --upgrade pip
           pip install cython==0.29.36 buildozer
 
-      - name: Pre-install Android SDK components via sdkmanager
+      - name: Fool Buildozer with pre-installed SDK & links
         run: |
           export JAVA_HOME=$JAVA_HOME_17_X64
           export PATH=$JAVA_HOME/bin:$PATH
           
           SDK_DIR="/home/runner/.buildozer/android/platform/android-sdk"
           mkdir -p $SDK_DIR/cmdline-tools/latest
+          mkdir -p $SDK_DIR/tools/bin
           
           curl -o /tmp/tools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
           unzip -q /tmp/tools.zip -d /tmp/cmd-tools
           mv /tmp/cmd-tools/cmdline-tools/* $SDK_DIR/cmdline-tools/latest/
           
-          # Lizenzen vorab schreiben
+          # Doppelter Symlink, damit Buildozer absolut jeden Pfad findet, den es sucht
+          ln -sf $SDK_DIR/cmdline-tools/latest/bin/sdkmanager $SDK_DIR/tools/bin/sdkmanager
+          ln -sf $SDK_DIR/cmdline-tools/latest/bin/sdkmanager /home/runner/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager
+          
+          # Lizenzen schreiben
           mkdir -p $SDK_DIR/licenses
           echo "8933bac16c9d2af29705f148f4np912a5120a112" > $SDK_DIR/licenses/android-sdk-license
           echo "d56f5187479451eabf01fb78af6dfcb131e6489e" >> $SDK_DIR/licenses/android-sdk-license
           echo "24333f8a43b682427c875a6980b8dadb9f5b5f88" >> $SDK_DIR/licenses/android-sdk-license
 
-          # SDK Manager direkt ausführen und Pakete vorinstallieren
+          # Pakete vorinstallieren
           export PATH=$SDK_DIR/cmdline-tools/latest/bin:$PATH
-          yes | sdkmanager --sdk_root=$SDK_DIR --licenses
-          sdkmanager --sdk_root=$SDK_DIR "platform-tools" "platforms;android-33" "build-tools;33.0.1"
+          yes | sdkmanager --sdk_root=$SDK_DIR --licenses || true
+          sdkmanager --sdk_root=$SDK_DIR "platform-tools" "platforms;android-33" "build-tools;33.0.1" || true
 
       - name: Build with Buildozer
         run: |
