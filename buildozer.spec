@@ -1,20 +1,19 @@
 [app]
-title = Atlas
-package.name = atlas
-package.domain = org.atlas
+
+title = Atlas E-Lkw Tracker
+package.name = elkwtracker
+package.domain = org.elkw
+source.include_exts = py,png,jpg,kv,atlas
 source.dir = .
-source.exts = py,png,jpg,kv,atlas
 version = 0.1
-requirements = python3,kivy
+requirements = python3,kivy,requests,urllib3
 orientation = portrait
-fullscreen = 0
-android.permissions = INTERNET
+android.permissions = INTERNET,ACCESS_FINE_LOCATION
 android.api = 33
-android.minapi = 21
-android.ndk = 25b
 android.accept_sdk_license = True
+android.minapi = 21
+android.archs = arm64-v8a
 
 [buildozer]
 log_level = 2
 warn_on_root = 1
-android.archs = arm64-v8a
