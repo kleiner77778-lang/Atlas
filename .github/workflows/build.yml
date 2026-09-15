@@ -15,6 +15,19 @@ jobs:
         with:
           python-version: '3.10'
 
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK and Accept Licenses
+        uses: android-actions/setup-android@v3
+        with:
+          api-level: 33
+          build-tools: 33.0.1
+          include-system-images: false
+
       - name: Install System Dependencies
         run: |
           sudo apt-get update
@@ -22,37 +35,13 @@ jobs:
             build-essential git python3-dev ffmpeg \
             libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
             libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev \
-            zlib1g-dev libunwind-dev openjdk-17-jdk autoconf libtool pkg-config \
+            zlib1g-dev libunwind-dev autoconf libtool pkg-config \
             libncurses5-dev libffi-dev libssl-dev
 
       - name: Install Buildozer and Cython
         run: |
           pip install --upgrade pip
           pip install cython==0.29.36 buildozer
-
-      - name: Force correct SDK versions in buildozer.spec
-        run: |
-          python3 -c "
-          with open('buildozer.spec', 'r') as f:
-              content = f.read()
-          
-          # Replace or append api and build tools
-          import re
-          def set_config(key, value, text):
-              pattern = r'#?\s*' + key + r'(\s*=\s*.*)?$'
-              if re.search(pattern, text, re.MULTILINE):
-                  return re.sub(pattern, f'{key} = {value}', text, flags=re.MULTILINE)
-              else:
-                  return text + f'\n{key} = {value}\n'
-
-          content = set_config('android.api', '33', content)
-          content = set_config('android.minapi', '21', content)
-          content = set_config('android.build_tools_version', '33.0.1', content)
-
-          with open('buildozer.spec', 'w') as f:
-              f.write(content)
-          print('buildozer.spec successfully updated!')
-          "
 
       - name: Build with Buildozer
         run: |
