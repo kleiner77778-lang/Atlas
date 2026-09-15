@@ -1,0 +1,14 @@
+[
+    {
+        "name": "Schweiz / Beringen",
+        "lat": 47.745,
+        "lon": 8.68,
+        "radius_km": 3.0
+    },
+    {
+        "name": "Deutschland / Singen",
+        "lat": 47.76,
+        "lon": 8.83,
+        "radius_km": 2.5
+    }
+]

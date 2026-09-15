@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atlas - Volvo E-Lkw Navigation</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #121212; color: #fff; overflow: hidden; }
+        
+        #controls { 
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 100000;
+            padding: 10px; 
+            background: rgba(30, 30, 30, 0.95); 
+            box-sizing: border-box;
+            display: flex; 
+            flex-direction: column; 
+            gap: 8px; 
+            max-height: 220px;
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        #controls.collapsed {
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            opacity: 0;
+            border: none;
+            pointer-events: none;
+        }
+
+        select, input, button { padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #444; background: #2a2a2a; color: #fff; }
+        .btn-start { background: #28a745; cursor: pointer; font-weight: bold; }
+        .btn-start:hover { background: #218838; }
+        .btn-cancel { background: #dc3545; cursor: pointer; font-weight: bold; padding: 6px 12px; font-size: 13px; border: none; border-radius: 4px; }
+        .btn-cancel:hover { background: #c82333; }
+        
+        #map-container { position: relative; width: 100vw; height: 100vh; }
+        #map { height: 100%; width: 100%; background: #1a1a1a; }
+
+        .dark-mode-streets .leaflet-tile-pane {
+            filter: brightness(0.7) invert(1) contrast(1.5) hue-rotate(200deg);
+        }
+        .dark-mode-streets .truck-triangle-icon,
+        .dark-mode-streets .leaflet-marker-pane,
+        .dark-mode-streets .leaflet-overlay-pane {
+            filter: none !important;
+        }
+
+        .truck-triangle-icon {
+            background: transparent;
+            border: none;
+            font-size: 34px;
+            text-align: center;
+            line-height: 34px;
+            filter: drop-shadow(0 0 10px #00ffff) drop-shadow(0 0 3px #ffffff);
+            transition: transform 0.3s ease-out, top 0.3s ease-out, left 0.3s ease-out;
+        }
+
+        #floating-menu-container {
+            position: absolute;
+            bottom: 25px;
+            left: 15px;
+            z-index: 99999;
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 12px;
+        }
+        
+        #btn-toggle-search {
+            position: absolute;
+            top: 75px;
+            right: 15px;
+            z-index: 99999;
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            background: #2a2a2a;
+            border: 2px solid #555;
+            color: #fff;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.7);
+            display: none;
+        }
+
+        #nav-info-box {
+            position: absolute;
+            top: 75px;
+            right: 15px;
+            z-index: 99998;
+            background: rgba(20, 20, 20, 0.95);
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 8px 12px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.7);
+            display: none; 
+        }
+        .nav-info-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .nav-info-val { font-size: 16px; font-weight: bold; color: #fff; }
+        .nav-info-lbl { font-size: 10px; color: #aaa; text-transform: uppercase; }
+
+        #turn-assistant {
+            position: absolute;
+            top: 75px;
+            left: 15px;
+            z-index: 99998;
+            background: rgba(20, 20, 20, 0.95);
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.7);
+            display: none; 
+        }
+        #turn-icon { font-size: 28px; color: #28a745; }
+        .turn-text-container { display: flex; flex-direction: column; }
+        #turn-dist { font-size: 18px; font-weight: bold; color: #fff; }
+        #turn-instruction { font-size: 12px; color: #ccc; }
+
+        #alert-banner {
+            position: absolute;
+            top: 140px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 99999;
+            background: rgba(220, 53, 69, 0.95);
+            border: 2px solid #ffc107;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+            display: none;
+            text-align: center;
+            max-width: 90%;
+        }
+
+        #pro-menu-modal {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.85);
+            z-index: 200000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: #1e1e1e;
+            border: 1px solid #444;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 450px;
+            padding: 20px;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.9);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; font-size: 18px; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .menu-action-btn { background: #2a2a2a; border: 1px solid #555; padding: 12px; border-radius: 8px; color: #fff; font-size: 14px; cursor: pointer; text-align: center; display: flex; flex-direction: column; gap: 5px; align-items: center; }
+        .menu-action-btn:hover { background: #333; border-color: #00ffff; }
+
+        .float-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            color: #fff;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.7);
+            transition: transform 0.1s ease;
+        }
+        .float-btn:active { transform: scale(0.90); }
+        
+        #btn-hamburger { background: #333; border: 2px solid #555; }
+        #btn-center { background: #ff9800; border: 2px solid #cc7a00; font-size: 22px; }
+        #btn-orientation { background: #007acc; border: 2px solid #005999; font-weight: bold; }
+    </style>
+</head>
+<body class="dark-mode-streets">
+    <div id="controls">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 style="margin:0; font-size:15px;" id="panel-title">Volvo E-Lkw Nav // Live-Fahrt aktiv</h2>
+            <button onclick="toggleSearch()" style="background:transparent; border:none; color:#aaa; font-size:16px; cursor:pointer;">✕ Schließen</button>
+        </div>
+        <select id="vehicle-select">
+            <option value="Volvo FE Electric (12t)">Volvo FE Electric (12t) - 250 kWh</option>
+            <option value="Volvo FE Electric (18t)" selected>Volvo FE Electric (18t) - 280 kWh</option>
+            <option value="Volvo FM Electric (27t)">Volvo FM Electric (27t) - 450 kWh</option>
+            <option value="Volvo FH Electric (40t)">Volvo FH Electric (40t) - 540 kWh</option>
+        </select>
+        <div style="display: flex; gap: 5px;">
+            <input type="text" id="ziel-input" placeholder="Ziel eingeben..." style="flex: 1;">
+            <button class="btn-start" onclick="starteRoute()">Route starten</button>
+        </div>
+    </div>
+
+    <div id="pro-menu-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span>Volvo Pro-Menü</span>
+                <button onclick="toggleMenu()" style="background:none; border:none; color:#fff; font-size:18px; cursor:pointer;">✕</button>
+            </div>
+            <div class="menu-grid">
+                <button class="menu-action-btn" onclick="saveCurrentAsFavorite()">
+                    <span style="font-size:22px;">⭐</span>
+                    <span>Ziel als Favorit speichern</span>
+                </button>
+                <button class="menu-action-btn" onclick="openFavorites()">
+                    <span style="font-size:22px;">📂</span>
+                    <span>Favoriten laden</span>
+                </button>
+                <button class="menu-action-btn" onclick="searchNearby('Volvo Lkw Werkstatt Service')">
+                    <span style="font-size:22px;">🔧</span>
+                    <span>Werkstatt Suche</span>
+                </button>
+                <button class="menu-action-btn" onclick="searchNearby('Lkw Ladepunkt E-Truck Charging')">
+                    <span style="font-size:22px;">⚡</span>
+                    <span>Lade-Punkte</span>
+                </button>
+                <button class="menu-action-btn" onclick="searchNearby('Lkw Rastplatz Autohof')">
+                    <span style="font-size:22px;">🅿️</span>
+                    <span>Rastplätze</span>
+                </button>
+                <button class="menu-action-btn" onclick="toggleMenu()">
+                    <span style="font-size:22px;">🗺️</span>
+                    <span>Zurück zur Karte</span>
+                </button>
+            </div>
+            <div id="favorites-list" style="max-height: 120px; overflow-y: auto; background: #121212; padding: 8px; border-radius: 5px; font-size: 13px; display:none;">
+                <strong>Gespeicherte Favoriten:</strong>
+                <div id="fav-items">Keine</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="alert-banner">⚠️ Achtung: Stau auf der Strecke! Umfahrung wird berechnet...</div>
+
+    <div id="turn-assistant">
+        <div id="turn-icon">⬆</div>
+        <div class="turn-text-container">
+            <span id="turn-dist">0 m</span>
+            <span id="turn-instruction">Der Straße folgen</span>
+        </div>
+    </div>
+
+    <div id="nav-info-box">
+        <div class="nav-info-item">
+            <span class="nav-info-val" id="nav-dist">-</span>
+            <span class="nav-info-lbl">km</span>
+        </div>
+        <div style="width:1px; height:22px; background:#444;"></div>
+        <div class="nav-info-item">
+            <span class="nav-info-val" id="nav-time">-</span>
+            <span class="nav-info-lbl">Min</span>
+        </div>
+        <div style="width:1px; height:22px; background:#444;"></div>
+        <div class="nav-info-item">
+            <span class="nav-info-val" id="nav-arrival">-</span>
+            <span class="nav-info-lbl">Ankunft</span>
+        </div>
+        <button class="btn-cancel" onclick="abbrechenRoute()">✕</button>
+    </div>
+
+    <button id="btn-toggle-search" onclick="toggleSearch()" title="Suche öffnen">🔍</button>
+
+    <div id="map-container">
+        <div id="floating-menu-container">
+            <button id="btn-center" class="float-btn" onclick="zentriereStandort()" title="Auf Standort zentrieren">⌖</button>
+            <button id="btn-orientation" class="float-btn" onclick="toggleOrientation()" title="Ansicht umschalten">N</button>
+            <button id="btn-hamburger" class="float-btn" onclick="toggleMenu()" title="Volvo Menü">☰</button>
+        </div>
+        <div id="map"></div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        var map = L.map('map', {zoomControl: false}).setView([47.7608, 8.8351], 13);
+        
+        L.control.zoom({position: 'bottomright'}).addTo(map);
+
+        var streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' });
+        var satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Esri' });
+        
+        streetLayer.addTo(map);
+
+        var baseMaps = {
+            "Straßen (Weiß / Dunkel)": streetLayer,
+            "Satellit": satelliteLayer
+        };
+        L.control.layers(baseMaps, {}, {position: 'topleft'}).addTo(map);
+
+        map.on('baselayerchange', function(e) {
+            if (e.name.includes("Satellit")) {
+                document.body.classList.remove('dark-mode-streets');
+            } else {
+                document.body.classList.add('dark-mode-streets');
+            }
+        });
+
+        var currentRouteLayer = null;
+        var startMarker = null;
+        var userLat = null, userLon = null;
+        var lastDestinationLat = null, lastDestinationLon = null;
+        var lastDestinationName = "";
+        var currentHeading = 0;
+        var orientationMode = 'north'; // 'north' oder 'heading'
+        var manualOverride = false;
+        var activeDestination = "";
+        var lastCountry = "";
+        var poiMarkers = [];
+
+        var triangleIcon = L.divIcon({
+            className: 'truck-triangle-icon',
+            html: '▲', 
+            iconSize: [34, 34],
+            iconAnchor: [17, 17]
+        });
+
+        map.on('click', function(e) {
+            userLat = e.latlng.lat;
+            userLon = e.latlng.lng;
+            manualOverride = true; 
+            
+            if (!startMarker) {
+                startMarker = L.marker([userLat, userLon]).addTo(map).bindPopup("Manueller Startpunkt").openPopup();
+            } else {
+                startMarker.setLatLng([userLat, userLon]);
+            }
+            document.getElementById('panel-title').innerText = `Start manuell (${userLat.toFixed(3)}, ${userLon.toFixed(3)})`;
+        });
+
+        // Live GPS Watcher mit automatischem Mitrollen der Karte
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition(function(position) {
+                var gpsLat = position.coords.latitude;
+                var gpsLon = position.coords.longitude;
+                
+                if (position.coords.heading !== null && !isNaN(position.coords.heading)) {
+                    currentHeading = position.coords.heading;
+                }
+
+                if (!manualOverride) {
+                    userLat = gpsLat;
+                    userLon = gpsLon;
+
+                    if (!startMarker) {
+                        startMarker = L.marker([userLat, userLon], {icon: triangleIcon}).addTo(map);
+                    } else {
+                        if (startMarker.options.icon !== triangleIcon) {
+                            map.removeLayer(startMarker);
+                            startMarker = L.marker([userLat, userLon], {icon: triangleIcon}).addTo(map);
+                        } else {
+                            startMarker.setLatLng([userLat, userLon]);
+                        }
+                    }
+
+                    // Dreieck in Fahrtrichtung drehen
+                    var iconEl = document.querySelector('.truck-triangle-icon');
+                    if (iconEl) {
+                        iconEl.style.transform = `rotate(${currentHeading}deg)`;
+                    }
+
+                    // KARTEN-MITROLLEN: Wenn Heading-Modus aktiv ist, zentriere flüssig auf den Lkw
+                    if (orientationMode === 'heading') {
+                        map.setView([userLat, userLon], map.getZoom(), {animate: true});
+                    }
+                }
+                checkCountry(gpsLat, gpsLon);
+            }, function(error) {
+                if (!userLat && !userLon && lastDestinationLat && lastDestinationLon) {
+                    userLat = lastDestinationLat;
+                    userLon = lastDestinationLon;
+                    if (!startMarker) {
+                        startMarker = L.marker([userLat, userLon]).addTo(map).bindPopup("Start: Letztes Ziel (" + lastDestinationName + ")").openPopup();
+                    }
+                }
+            }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 5000 });
+        }
+
+        function checkCountry(lat, lon) {
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=3`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.address && data.address.country) {
+                        var country = data.address.country;
+                        if (lastCountry && lastCountry !== country) {
+                            showBanner(`🇪🇺 Grenzübertritt! Sie fahren nun in: ${country}`);
+                        }
+                        lastCountry = country;
+                    }
+                }).catch(e => console.log(e));
+        }
+
+        function showBanner(text, duration = 6000) {
+            var banner = document.getElementById('alert-banner');
+            banner.innerText = text;
+            banner.style.display = 'block';
+            setTimeout(() => { banner.style.display = 'none'; }, duration);
+        }
+
+        function saveCurrentAsFavorite() {
+            var zielVal = document.getElementById('ziel-input').value;
+            if (!zielVal) {
+                alert("Bitte gib erst ein Ziel in die Suchleiste ein, um es zu speichern!");
+                return;
+            }
+            let favs = JSON.parse(localStorage.getItem('volvo_favs') || '[]');
+            if (!favs.includes(zielVal)) {
+                favs.push(zielVal);
+                localStorage.setItem('volvo_favs', JSON.stringify(favs));
+                alert(`⭐ "${zielVal}" wurde zu den Favoriten hinzugefügt!`);
+            } else {
+                alert("Dieses Ziel ist bereits in den Favoriten.");
+            }
+        }
+
+        function openFavorites() {
+            let favs = JSON.parse(localStorage.getItem('volvo_favs') || '[]');
+            let container = document.getElementById('fav-items');
+            let listDiv = document.getElementById('favorites-list');
+            listDiv.style.display = 'block';
+            
+            if (favs.length === 0) {
+                container.innerHTML = "Keine Favoriten gespeichert.";
+                return;
+            }
+            let html = "";
+            favs.forEach(f => {
+                html += `<div style="padding: 5px 0; border-bottom: 1px solid #333; cursor:pointer; color:#00ffff;" onclick="selectFavorite('${f}')">⭐ ${f}</div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function selectFavorite(place) {
+            document.getElementById('ziel-input').value = place;
+            toggleMenu();
+            starteRoute();
+        }
+
+        function searchNearby(queryType) {
+            if (!userLat || !userLon) {
+                alert("GPS-Standort noch nicht ermittelt. Bitte kurz warten oder auf die Karte tippen.");
+                return;
+            }
+            toggleMenu();
+            showBanner(`🔍 Suche ${queryType} im Umkreis...`, 4000);
+
+            poiMarkers.forEach(m => map.removeLayer(m));
+            poiMarkers = [];
+
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(queryType)}&lat=${userLat}&lon=${userLon}&limit=5`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.length > 0) {
+                        data.forEach(item => {
+                            var pLat = parseFloat(item.lat);
+                            var pLon = parseFloat(item.lon);
+                            var m = L.marker([pLat, pLon]).addTo(map)
+                                .bindPopup(`<b>${item.display_name}</b><br><button onclick="setAsTarget('${item.display_name}', ${pLat}, ${pLon})">Als Ziel wählen</button>`);
+                            poiMarkers.push(m);
+                        });
+                        map.setView([userLat, userLon], 14, {animate: true});
+                        showBanner(`✅ ${data.length} Treffer in der Nähe gefunden!`, 4000);
+                    } else {
+                        alert("Keine Treffer in unmittelbarer Nähe gefunden.");
+                    }
+                }).catch(e => alert("Fehler bei der Umkreissuche."));
+        }
+
+        function setAsTarget(name, lat, lon) {
+            document.getElementById('ziel-input').value = name;
+            lastDestinationLat = lat;
+            lastDestinationLon = lon;
+            starteRoute();
+        }
+
+        function zentriereStandort() {
+            if (userLat && userLon) {
+                manualOverride = false; // Wieder freigeben für automatisches Mitfahren
+                map.setView([userLat, userLon], 18, {animate: true});
+            } else {
+                alert("Kein Startpunkt verfügbar. Bitte tippe auf die Karte.");
+            }
+        }
+
+        function toggleOrientation() {
+            if (orientationMode === 'north') {
+                orientationMode = 'heading';
+                document.getElementById('btn-orientation').innerText = '🧭';
+                document.getElementById('btn-orientation').style.background = '#28a745';
+                showBanner("🧭 Fahrmodus aktiv: Karte rollt mit.", 3000);
+            } else {
+                orientationMode = 'north';
+                document.getElementById('btn-orientation').innerText = 'N';
+                document.getElementById('btn-orientation').style.background = '#007acc';
+                showBanner("🗺️ Nord-Modus aktiv.", 3000);
+            }
+        }
+
+        function toggleSearch() {
+            var controls = document.getElementById('controls');
+            var isCollapsed = controls.classList.toggle('collapsed');
+            if (isCollapsed && currentRouteLayer) {
+                document.getElementById('btn-toggle-search').style.display = 'flex';
+            } else {
+                document.getElementById('btn-toggle-search').style.display = 'none';
+            }
+            setTimeout(function() { map.invalidateSize(); }, 300);
+        }
+
+        function starteRoute() {
+            var ziel = document.getElementById('ziel-input').value;
+            if (!ziel) {
+                alert("Bitte gib ein Ziel ein!");
+                return;
+            }
+
+            if ((!userLat || !userLon) && lastDestinationLat && lastDestinationLon) {
+                userLat = lastDestinationLat;
+                userLon = lastDestinationLon;
+            }
+
+            if (!userLat || !userLon) {
+                alert("Kein Startpunkt! Entweder GPS aktivieren oder einmal kurz auf die Karte als Start tippen.");
+                return;
+            }
+
+            activeDestination = ziel;
+            var url = `/api/route?ziel=${encodeURIComponent(ziel)}&lat=${userLat}&lon=${userLon}`;
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if(data.status === "success") {
+                        document.getElementById('nav-dist').innerText = data.distance_km;
+                        document.getElementById('nav-time').innerText = data.duration_min;
+                        
+                        var now = new Date();
+                        now.setMinutes(now.getMinutes() + parseInt(data.duration_min || 0));
+                        document.getElementById('nav-arrival').innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                        if (currentRouteLayer) {
+                            map.removeLayer(currentRouteLayer);
+                        }
+
+                        currentRouteLayer = L.geoJSON(data.geojson, {
+                            style: { color: '#ff9800', weight: 6, opacity: 0.9 }
+                        }).addTo(map);
+
+                        var coords = data.geojson.coordinates;
+                        if (coords && coords.length > 0) {
+                            var endCoord = coords[coords.length - 1];
+                            lastDestinationLat = endCoord[1];
+                            lastDestinationLon = endCoord[0];
+                            lastDestinationName = ziel;
+                        }
+
+                        map.setView([userLat, userLon], 18, {animate: true});
+                        
+                        document.getElementById('controls').classList.add('collapsed');
+                        document.getElementById('btn-toggle-search').style.display = 'flex';
+                        document.getElementById('nav-info-box').style.display = 'flex';
+                        document.getElementById('turn-assistant').style.display = 'flex';
+
+                        setTimeout(function() { map.invalidateSize(); }, 300);
+                    } else {
+                        alert("Fehler: " + data.message);
+                    }
+                });
+        }
+
+        function abbrechenRoute() {
+            if (currentRouteLayer) {
+                map.removeLayer(currentRouteLayer);
+                currentRouteLayer = null;
+            }
+            activeDestination = "";
+            document.getElementById('nav-info-box').style.display = 'none';
+            document.getElementById('turn-assistant').style.display = 'none';
+            document.getElementById('controls').classList.remove('collapsed');
+            document.getElementById('btn-toggle-search').style.display = 'none';
+
+            if (lastDestinationLat && lastDestinationLon) {
+                userLat = lastDestinationLat;
+                userLon = lastDestinationLon;
+                manualOverride = true;
+                if (startMarker) { map.removeLayer(startMarker); }
+                startMarker = L.marker([userLat, userLon]).addTo(map).bindPopup("Neuer Start (Letztes Ziel)").openPopup();
+                document.getElementById('panel-title').innerText = `Nächster Start: Letztes Ziel`;
+            } else {
+                manualOverride = false;
+            }
+
+            setTimeout(function() { map.invalidateSize(); }, 300);
+        }
+
+        function toggleMenu() {
+            var modal = document.getElementById('pro-menu-modal');
+            if (modal.style.display === 'flex') {
+                modal.style.display = 'none';
+            } else {
+                modal.style.display = 'flex';
+            }
+        }
+    </script>
+</body>
+</html>

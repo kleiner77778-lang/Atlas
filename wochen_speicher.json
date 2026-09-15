@@ -1,0 +1,12 @@
+{
+    "schicht_aktiv": true,
+    "tacho_start": 123987.0,
+    "initial_kontingent": 260.0,
+    "schicht_start_zeit": 1789209416.3792024,
+    "schicht_start_uhrzeit": "12:36 Uhr",
+    "lenkzeit_sekunden": 12993,
+    "arbeitszeit_sekunden": 106,
+    "gps_gefahrene_km": 23.025534193239025,
+    "grenz_protokoll": [],
+    "pausen_protokoll": []
+}

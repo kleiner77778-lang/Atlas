@@ -1,0 +1,8 @@
+{
+  "name": "Volvo FM Electric",
+  "total_weight_t": 18.0,
+  "max_weight_t": 20.0,
+  "battery_capacity_kwh": 540,
+  "profile": "electric_truck",
+  "operational_area": "Singen / Baden-Württemberg & Schweiz"
+}
