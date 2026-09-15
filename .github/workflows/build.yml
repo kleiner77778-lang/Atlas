@@ -30,11 +30,17 @@ jobs:
           pip install --upgrade pip
           pip install cython==0.29.36 buildozer
 
-      - name: Patch buildozer.spec for API 34
+      - name: Fix Buildozer spec for API 33 and Build Tools 33.0.1
         run: |
-          sed -i 's/#\?android.api =.*/android.api = 34/g' buildozer.spec
-          sed -i 's/#\?android.min_api =.*/android.min_api = 21/g' buildozer.spec
-          sed -i 's/#\?android.build_tools_version =.*/android.build_tools_version = 34.0.0/g' buildozer.spec
+          # Falls buildozer.spec existiert, patchen wir die Versionen direkt
+          if [ -f buildozer.spec ]; then
+            sed -i 's/#android.api =.*/android.api = 33/' buildozer.spec
+            sed -i 's/android.api =.*/android.api = 33/' buildozer.spec
+            sed -i 's/#android.minapi =.*/android.minapi = 21/' buildozer.spec
+            sed -i 's/android.minapi =.*/android.minapi = 21/' buildozer.spec
+            sed -i 's/#android.build_tools_version =.*/android.build_tools_version = 33.0.1/' buildozer.spec
+            sed -i 's/android.build_tools_version =.*/android.build_tools_version = 33.0.1/' buildozer.spec
+          fi
 
       - name: Build with Buildozer
         run: |
