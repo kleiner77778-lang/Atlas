@@ -21,6 +21,16 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Cache Buildozer global directory
+        uses: actions/cache@v4
+        with:
+          path: |
+            .buildozer
+            /home/runner/.buildozer
+          key: ${{ runner.os }}-buildozer-${{ hashFiles('buildozer.spec') }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-buildozer-
+
       - name: Install System Dependencies
         run: |
           sudo apt-get update
@@ -36,7 +46,7 @@ jobs:
           pip install --upgrade pip
           pip install cython==0.29.36 buildozer
 
-      - name: Fool Buildozer with pre-installed SDK & links
+      - name: Prepare Android SDK
         run: |
           export JAVA_HOME=$JAVA_HOME_17_X64
           export PATH=$JAVA_HOME/bin:$PATH
@@ -45,12 +55,13 @@ jobs:
           mkdir -p $SDK_DIR/cmdline-tools/latest
           mkdir -p $SDK_DIR/tools/bin
           
-          curl -o /tmp/tools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-          unzip -q /tmp/tools.zip -d /tmp/cmd-tools
-          mv /tmp/cmd-tools/cmdline-tools/* $SDK_DIR/cmdline-tools/latest/
+          if [ ! -f "$SDK_DIR/cmdline-tools/latest/bin/sdkmanager" ]; then
+            curl -o /tmp/tools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+            unzip -q /tmp/tools.zip -d /tmp/cmd-tools
+            mv /tmp/cmd-tools/cmdline-tools/* $SDK_DIR/cmdline-tools/latest/
+          fi
           
           ln -sf $SDK_DIR/cmdline-tools/latest/bin/sdkmanager $SDK_DIR/tools/bin/sdkmanager
-          ln -sf $SDK_DIR/cmdline-tools/latest/bin/sdkmanager /home/runner/.buildozer/android/platform/android-sdk/tools/bin/sdkmanager
           
           mkdir -p $SDK_DIR/licenses
           echo "8933bac16c9d2af29705f148f4np912a5120a112" > $SDK_DIR/licenses/android-sdk-license
@@ -64,7 +75,6 @@ jobs:
       - name: Build with Buildozer
         run: |
           export JAVA_HOME=$JAVA_HOME_17_X64
-          # Globale Android-Variablen löschen, damit Buildozer nicht verwirrt wird
           unset ANDROID_HOME
           unset ANDROID_SDK_ROOT
           unset ANDROID_NDK_HOME
