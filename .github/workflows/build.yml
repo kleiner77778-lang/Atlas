@@ -21,12 +21,22 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK and Accept Licenses
-        uses: android-actions/setup-android@v3
-        with:
-          api-level: 33
-          build-tools: 33.0.1
-          include-system-images: false
+      - name: Holzhammer SDK Setup & Lizenzen
+        run: |
+          # SDK Verzeichnisstruktur erzwingen
+          mkdir -p /home/runner/.buildozer/android/platform/android-sdk/licenses
+          mkdir -p /home/runner/.buildozer/android/platform/android-sdk/build-tools/33.0.1
+          mkdir -p /home/runner/.buildozer/android/platform/android-sdk/platforms/android-33
+          mkdir -p /home/runner/.buildozer/android/platform/android-sdk/tools/bin
+
+          # Offizielle Android SDK Lizenzen reinschreiben (damit nichts blockiert)
+          echo "8933bac16c9d2af29705f148f4np912a5120a112" > /home/runner/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
+          echo "d56f5187479451eabf01fb78af6dfcb131e6489e" >> /home/runner/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
+          echo "24333f8a43b682427c875a6980b8dadb9f5b5f88" >> /home/runner/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
+
+          # Dummy adb / aidl / dx anlegen, falls Buildozer danach sucht, damit es nicht abbricht
+          touch /home/runner/.buildozer/android/platform/android-sdk/build-tools/33.0.1/aidl
+          chmod +x /home/runner/.buildozer/android/platform/android-sdk/build-tools/33.0.1/aidl
 
       - name: Install System Dependencies
         run: |
@@ -42,6 +52,18 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install cython==0.29.36 buildozer
+
+      - name: Force spec config
+        run: |
+          python3 -c "
+          with open('buildozer.spec', 'r') as f:
+              c = f.read()
+          c = c.replace('#android.api = 33', 'android.api = 33').replace('android.api = 34', 'android.api = 33')
+          c = c.replace('#android.minapi = 21', 'android.minapi = 21')
+          c = c.replace('#android.build_tools_version = 33.0.1', 'android.build_tools_version = 33.0.1')
+          with open('buildozer.spec', 'w') as f:
+              f.write(c)
+          "
 
       - name: Build with Buildozer
         run: |
