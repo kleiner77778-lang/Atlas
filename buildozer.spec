@@ -1,19 +1,20 @@
 [app]
-title = Atlas TruckNavi
-package.name = atlastrucknavi
+title = Atlas
+package.name = atlas
 package.domain = org.atlas
 source.dir = .
-source.include_exts = py,png,jpg,kv,atlas
-version = 1.1
-requirements = python3,kivy,urllib3,requests,certifi
+source.exts = py,png,jpg,kv,atlas
+version = 0.1
+requirements = python3,kivy
 orientation = portrait
+osx.python_version = 3
+osx.kivy_version = 1.11.0
 fullscreen = 0
-android.permissions = INTERNET,ACCESS_FINE_LOCATION,ACCESS_COARSE_LOCATION,VIBRATE,MODIFY_AUDIO_SETTINGS
+android.permissions = INTERNET
 android.api = 33
 android.minapi = 21
 android.ndk = 25b
-android.sdk = 31
-p4a.branch = master
+android.accept_sdk_license = True
 
 [buildozer]
 log_level = 2
