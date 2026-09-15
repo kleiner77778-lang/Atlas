@@ -79,7 +79,7 @@ jobs:
           unset ANDROID_SDK_ROOT
           unset ANDROID_NDK_HOME
           unset ANDROID_NDK_ROOT
-          buildozer -v android debug
+          buildozer -v android debug || (echo "=== BUILD FAILED, SHOWING LAST LOGS ===" && tail -n 100 .buildozer/android/platform/build-*/*/dists/*/log.txt || true)
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
